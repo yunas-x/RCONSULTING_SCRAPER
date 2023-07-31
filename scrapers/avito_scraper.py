@@ -1,5 +1,4 @@
 from typing import Dict, Iterator, List, Union
-import pandas as pd
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -7,6 +6,8 @@ from selenium.webdriver.remote.webelement import WebElement
 from random import randint
 from time import sleep
 
+from dataobjects.scraped_item import ScrapedItem
+from dataobjects.write_to_excel import write_to_excel
 from scrapers.scraper import Scraper
 from settings.settings import settings
 from utils.utils import Utils
@@ -16,30 +17,30 @@ class AvitoScraper(Scraper):
     
     def process(self):
         
-        scraped_items: List[Dict[str, str]] = list()
+        scraped_items: List[ScrapedItem] = list()
         
         self.driver.get(url=self.url)
         
         for page_url in self.get_page_urls():
             scraped_items.extend(self.scrape_page(page_url))
         
-        links: List[Dict[str, str]] = self.process_links(links=self.log_error.get_errors())
+        links: List[ScrapedItem] = self.process_links(links=Utils.get_errors())
         scraped_items.extend(links)
         
-        self._AvitoWriter().dump(items=scraped_items)
+        write_to_excel(items=scraped_items)
     
-    def process_links(self, links: List[str]) -> List[Dict[str, str]]:
+    def process_links(self, links: List[str]) -> List[ScrapedItem]:
         """Парсит список ссылок на объявления
         """
         
-        scraped_items: List[Dict[str, str]] = list()
+        scraped_items: List[ScrapedItem] = list()
         
-        for l in links[:1]:
-            sleep(randint(1, 3))
+        for l in links:
+            sleep(randint(3, 8))
             try:
                 scraped_items.append(self.scrape_item(l))
             except:
-                self.logger.log_error(l)
+                self.log_error(l)
 
         return scraped_items
     
@@ -52,7 +53,7 @@ class AvitoScraper(Scraper):
         for p in range(1, last_page_index + 1):
             yield self.__get_page_link__(marker=settings.AVITO_PAGE_MARKER, no=p)
     
-    def scrape_page(self, page_link: str) -> List[Dict[str, str]]:
+    def scrape_page(self, page_link: str) -> List[ScrapedItem]:
         """Прасит страницу с объявлениями
         """
         
@@ -63,7 +64,7 @@ class AvitoScraper(Scraper):
         
         return self.process_links(links=links)
     
-    def scrape_item(self, link: str) -> Dict[str, str]:
+    def scrape_item(self, link: str) -> ScrapedItem:
         """Парсит объявление
         """
         
@@ -84,11 +85,9 @@ class AvitoScraper(Scraper):
                                 
         published_on = AvitoScraper.DateConverter.yeild_date_DD_MM_YYYY(published_on=published_on)
 
-        #title = self.driver  \
-        #                        .find_element(by=By.XPATH, value=settings.AVITO_TITLE_XPATH) \
-        #                        .text\
-        #seller_type = self.driver.find_element(by=By.XPATH, value=settings.AVITO_SELLER_TYPE_XPATH) \
-        #                        .text
+        title = self.driver  \
+                                .find_element(by=By.XPATH, value=settings.AVITO_TITLE_XPATH) \
+                                .text
         
         price = self.driver \
                                 .find_element(by=By.XPATH, value=settings.AVITO_PRICE_XPATH) \
@@ -101,7 +100,8 @@ class AvitoScraper(Scraper):
         contact = self.driver.find_element(by=By.XPATH, value=settings.AVITO_SELLER_XPATH) \
                                 .text
                                 
-
+        seller_type = self.driver.find_element(by=By.XPATH, value=settings.AVITO_SELLER_TYPE_XPATH) \
+                                .text
                                 
         address = self.driver.find_element(by=By.XPATH, value=settings.AVITO_ADDRESS_XPATH) \
                                 .text
@@ -135,21 +135,21 @@ class AvitoScraper(Scraper):
         
         self.__save_media__(id, published_on)
 
-        dct = self._AvitoWriter().to_avito_data(
-                                                link, 
-                                                id, 
-                                                published_on, 
-                                                price, 
-                                                price_per_meter, 
-                                                contact, 
-                                                address, 
-                                                address_georef, 
-                                                description, 
-                                                usecase, 
-                                                other
-                                                )
+        item = ScrapedItem(link=link, 
+                           id=id, 
+                           published_on=published_on,
+                           title=title,
+                           price=price,
+                           price_per_meter=price_per_meter,
+                           contact=contact,
+                           address=address,
+                           address_georef=address_georef,
+                           description=description, 
+                           seller_type=seller_type,
+                           other=other,
+                           usecase=usecase)
 
-        return dct
+        return item
         
     def __get_other_info__(self, info_block: List[WebElement]) -> Dict[str, str]:
         keys: List[str] = list()
@@ -190,56 +190,3 @@ class AvitoScraper(Scraper):
                             .text
                                           
         return int(last_page_index) if last_page_index.isnumeric() else 0
-    
-    class _AvitoWriter():
-
-        def __new__(cls):
-            if not hasattr(cls, "instance"):
-                cls.instance = super().__new__(cls)
-                return cls.instance
-            else:
-                return cls.instance
-
-        def dump(self, items: List[Dict[str, str]]) -> bool:
-            
-            lst = []
-            if len(items) > 0:
-                lst.append(list(items[0].keys()))
-            else:
-                return False
-                    
-            items.sort(key=lambda x: x["ID объявления"])
-            lst = [list(item.values()) for item in items]
-            df = pd.DataFrame(lst)
-            
-            writer = pd.ExcelWriter(Utils.get_path(settings.EXCEL_FILE_NAME))
-            df.to_excel(writer, sheet_name='welcome', index=False)
-            writer.close()
-            return True
-
-        def to_avito_data(self, 
-                          link, 
-                          id, 
-                          published_on, 
-                          price, 
-                          price_per_meter, 
-                          contact, 
-                          address, 
-                          address_georef, 
-                          description,
-                          usecase, 
-                          other):
-            
-            dct: Dict[str, str] = dict()
-            dct["ID объявления"] = id
-            dct["Тип"] = usecase
-            dct["Адрес"] = address
-            dct["Район"] = address_georef
-            dct["Цена"] = price
-            dct["Цена/метр"] = price_per_meter
-            dct["Продавец"] = contact
-            dct["Описание"] = description
-            dct["Дата"] = published_on
-            dct["Ссылка"] = link
-            dct.update(other)
-            return dct
