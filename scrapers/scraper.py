@@ -12,6 +12,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 
 from datetime import datetime, timedelta
+from utils.logger import TXTLogger
 
 from utils.utils import Utils
 
@@ -24,16 +25,16 @@ class Scraper(abc.ABC):
     
     __driver__: webdriver.Chrome
     
-    __log_error__: Callable[[str, [...]], None]
+    __logger__: TXTLogger
     
     def __init__(self, 
                  driver: webdriver.Chrome, 
                  url: str,
-                 log_error: Callable[[str, [...]], None] = Utils.log_error
+                 logger: TXTLogger = TXTLogger()
                  ) -> None:
-        self.__url__ = url
-        self.__driver__ = driver
-        self.__log_error__ = log_error
+        self.url = url
+        self.driver = driver
+        self.log_error = logger
     
     @property
     def driver(self):
@@ -44,8 +45,20 @@ class Scraper(abc.ABC):
         return self.__url__
     
     @property
-    def log_error(self):
-        return self.__log_error__
+    def logger(self):
+        return self.__logger__
+    
+    @driver.setter
+    def driver(self, value: webdriver.Chrome):
+        self.__driver__ = value
+    
+    @url.setter
+    def url(self, value: str):
+        self.__url__ = value
+    
+    @logger.setter
+    def logger(self, value: TXTLogger):
+        self.__logger__ = value
     
     @abc.abstractmethod
     def process(self):
@@ -75,12 +88,16 @@ class Scraper(abc.ABC):
             str: путь до сохраненной страницы
         """
         
+        ## prepare full size
         original_size = self.driver.get_window_size()
-        #required_width = self.driver.execute_script('return document.body.parentNode.scrollWidth')
         required_height = self.driver.execute_script('return document.body.parentNode.scrollHeight')
         self.driver.set_window_size(original_size['width'], required_height)
+        
+        ## screenshooting
         path: str = Utils.get_path(f"{id}_объявление.png")
         self.driver.find_element(by=By.TAG_NAME, value='body').screenshot(path)
+        
+        ## reset
         self.driver.set_window_size(original_size['width'], original_size['height'])
         return path
             
@@ -95,7 +112,7 @@ class Scraper(abc.ABC):
             str: путь до скриншота
         """
                 
-        sleep(2)
+        sleep(2) #render
         path = Utils.get_path(f"{prefix}_{no}.png")
         self.driver.save_screenshot(path)
         return path
@@ -128,7 +145,7 @@ class Scraper(abc.ABC):
         """
         
         page_screen_path = self.__save_page__(id=id)
-        picture_paths = list() #self.save_pictures(prefix=id)
+        picture_paths = list() #self.save_pictures(prefix=id) ## to save pics 
         picture_paths.append(page_screen_path)
         pictures_and_stamps = {picture_path: published_on for picture_path in picture_paths}
         self._Timestamper().timestamp_all(pictures_and_stamps)
@@ -136,6 +153,16 @@ class Scraper(abc.ABC):
     class _Timestamper():
         """Проставляет метку времени на изображениях
         """
+        
+        FONT: str
+        
+        def __new__(cls):
+            if not hasattr(cls, "instance"):
+                cls.instance = super().__new__(cls)
+                cls.FONT = ImageFont.truetype("arial.ttf", 30)
+                return cls.instance
+            else:
+                return cls.instance
         
         def timestamp(self, picture_path: str, timestamp: str):
             """Ставит метку времени на одном скриншоте
@@ -147,8 +174,7 @@ class Scraper(abc.ABC):
             
             img = Image.open(picture_path)
             I1 = ImageDraw.Draw(img)
-            font = ImageFont.truetype("arial.ttf", 30)
-            I1.text((10, 10), timestamp, font=font, fill=(255, 0, 0))
+            I1.text((10, 10), timestamp, font=self.FONT, fill=(255, 0, 0))
             img.save(picture_path)
             
         def timestamp_all(self, pictures_and_timesmps: dict[str, str]):
@@ -164,6 +190,13 @@ class Scraper(abc.ABC):
     class DateConverter():
         """Конвертер для строкового представления данных
         """
+        
+        def __new__(cls):
+            if not hasattr(cls, "instance"):
+                cls.instance = super().__new__(cls)
+                return cls.instance
+            else:
+                return cls.instance
         
         @staticmethod
         def yeild_date_DD_MM_YYYY(published_on: str) -> str:
