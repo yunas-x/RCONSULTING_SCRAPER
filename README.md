@@ -18,6 +18,9 @@
 -- selenium_stealth <br/>
 -- git+https://github.com/SergeyPirogov/webdriver_manager@master <br/>
 -- pandas <br/>
+-- pillow <br/>
+-- openpyx1 <br/>
+
 
 Для этого используйте команду: pip install <название зависимости> <br/>
 
