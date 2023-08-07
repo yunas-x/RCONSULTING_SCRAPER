@@ -37,10 +37,10 @@ class AvitoScraper(Scraper):
         
         for l in links:
             sleep(randint(1, 3))
-            #try:
-            scraped_items.append(self.scrape_item(l))
-            #except:
-            #    self.logger.log_error(l)
+            try:
+                scraped_items.append(self.scrape_item(l))
+            except:
+                self.logger.log_error(l)
 
         return scraped_items
     
