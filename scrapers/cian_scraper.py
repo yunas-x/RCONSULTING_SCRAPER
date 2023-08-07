@@ -37,7 +37,7 @@ class CianScraper(Scraper):
             
             df.loc[df[settings.CIAN_ID_HEADER] == id, settings.CIAN_LAST_UPDATE_COL_TITLE] = published_on
             
-            self.__save_media__(id=id, published_on=published_on)
+            self.__save_media__(id=id, published_on=published_on, url=link)
         
         df.to_excel(f"{settings.DIRECTORY}/{settings.CIAN_EXCEL_FILE}")
         

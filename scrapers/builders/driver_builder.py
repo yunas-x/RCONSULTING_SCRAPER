@@ -19,25 +19,10 @@ class driver_builder:
         
         options = webdriver.ChromeOptions()
         
-        appState = {
-            "recentDestinations": [
-                {
-                    "id": "Save as PDF",
-                    "origin": "local",
-                    "account": ""
-                }
-            ],
-            "selectedDestinationId": "Save as PDF",
-            "version": 2
-        }
-        
         chrome_prefs = {
             "download.prompt_for_download": False,
-            "plugins.always_open_pdf_externally": True,
-            "download.open_pdf_in_system_reader": False,
             "profile.default_content_settings.popups": 0,
             "download.default_directory": settings.DIRECTORY,
-            "printing.print_preview_sticky_settings.appState": json.dumps(appState),
             "savefile.default_directory": settings.DIRECTORY,
         }
         
@@ -57,11 +42,9 @@ class driver_builder:
         # disable shared memory usage
         options.add_argument('--disable-dev-shm-usage')
         
-        options.add_argument('--kiosk-printing')
-        
         # service = ChromeService(executable_path=ChromeDriverManager().install())
         service = ChromeService()
-
+        
         driver = webdriver.Chrome(options=options, service=service)
         
         driver.maximize_window()

@@ -22,9 +22,10 @@ class settings():
 
     
     # XPATH Для парсинга пагинации с AVITO
-    AVITO_NUM_PAGE_XPATH = ".//nav[@aria-label='Пагинация']/ul/li[position()=last()-1]//span"
+    AVITO_NUM_PAGE_XPATH = ".//ul[@data-marker='pagination-button']/li[position()=last()-1]//span"
     
     # XPATH Для объявлений с AVITO
+    AVITO_BTN_XPATH = ".//button[@data-marker='item-phone-button/card']"
     AVITO_MAIN_PIC_XPATH = ".//div[@data-marker='image-frame/image-wrapper']/img"
     AVITO_ON_EXTENDED_PIC_XPATH = ".//div[@data-marker='extended-image-preview/item']"
     AVITO_LINK_ITEMS_XPATH = ".//div[@data-marker='catalog-serp']/div[@data-marker='item']//a[@data-marker='item-title']"

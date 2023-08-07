@@ -2,6 +2,7 @@ from typing import Dict, Iterator, List, Union
 import pandas as pd
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 
 from random import randint
@@ -23,7 +24,7 @@ class AvitoScraper(Scraper):
         for page_url in self.get_page_urls():
             scraped_items.extend(self.scrape_page(page_url))
         
-        links: List[Dict[str, str]] = self.process_links(links=self.log_error.get_errors())
+        links: List[Dict[str, str]] = self.process_links(links=self.logger.get_errors())
         scraped_items.extend(links)
         
         self._AvitoWriter().dump(items=scraped_items)
@@ -36,10 +37,10 @@ class AvitoScraper(Scraper):
         
         for l in links:
             sleep(randint(1, 3))
-            try:
-                scraped_items.append(self.scrape_item(l))
-            except:
-                self.logger.log_error(l)
+            #try:
+            scraped_items.append(self.scrape_item(l))
+            #except:
+            #    self.logger.log_error(l)
 
         return scraped_items
     
@@ -47,10 +48,15 @@ class AvitoScraper(Scraper):
         """Возвращает ссылки на страницы со списком объявлений
         """
         
-        last_page_index: int = self.get_last_page_index()
+        try: 
+            last_page_index: int = self.get_last_page_index()
+            for p in range(1, last_page_index + 1):
+                yield self.__get_page_link__(marker=settings.AVITO_PAGE_MARKER, no=p)
+        except:
+            self.logger.log_error(self.url)
+            yield self.url
         
-        for p in range(1, last_page_index + 1):
-            yield self.__get_page_link__(marker=settings.AVITO_PAGE_MARKER, no=p)
+
     
     def scrape_page(self, page_link: str) -> List[Dict[str, str]]:
         """Прасит страницу с объявлениями
@@ -133,7 +139,8 @@ class AvitoScraper(Scraper):
         
         other = self.__get_other_info__(info_block)
         
-        self.__save_media__(id, published_on)
+        self.__save_media__(id, published_on, link)
+        self.save_tel(id=id, timestamp=published_on, url=link)
 
         dct = self._AvitoWriter().to_avito_data(
                                                 link, 
@@ -162,6 +169,15 @@ class AvitoScraper(Scraper):
         other = dict(zip(keys, values))
         
         return other
+    
+    def __save_page__(self, id: int) -> str:
+        pagefile = super().__save_page__(id)
+        return pagefile
+
+    def save_tel(self, id: int, timestamp: str, url: str):
+        self.driver.find_element(by=By.XPATH, value=settings.AVITO_BTN_XPATH).click()
+        tel = self.__save_image__(id, "tel")
+        self._Timestamper().timestamp(picture_path=tel, timestamp=timestamp, url=url)
 
     def save_pictures(self, prefix: Union[str, int]) -> List[str]:
         

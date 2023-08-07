@@ -1,4 +1,4 @@
-from typing import Callable, List, Union
+from typing import List, Union
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -34,7 +34,7 @@ class Scraper(abc.ABC):
                  ) -> None:
         self.url = url
         self.driver = driver
-        self.log_error = logger
+        self.logger = logger
     
     @property
     def driver(self):
@@ -91,7 +91,7 @@ class Scraper(abc.ABC):
         ## prepare full size
         original_size = self.driver.get_window_size()
         required_height = self.driver.execute_script('return document.body.parentNode.scrollHeight')
-        self.driver.set_window_size(original_size['width'], required_height)
+        self.driver.set_window_size(original_size['width'], required_height * 1.5)
         
         ## screenshooting
         path: str = Utils.get_path(f"{id}_объявление.png")
@@ -99,6 +99,7 @@ class Scraper(abc.ABC):
         
         ## reset
         self.driver.set_window_size(original_size['width'], original_size['height'])
+        
         return path
             
     def __save_image__(self, prefix: Union[int, str], no: int) -> str:
@@ -136,7 +137,7 @@ class Scraper(abc.ABC):
         else:
             return f"{self.url}?{marker}={no}"
     
-    def __save_media__(self, id: int, published_on: str):
+    def __save_media__(self, id: int, published_on: str, url: str):
         """Сохраняет скриншоты объявления и фотографий
 
         Args:
@@ -148,7 +149,7 @@ class Scraper(abc.ABC):
         picture_paths = list() #self.save_pictures(prefix=id) ## to save pics 
         picture_paths.append(page_screen_path)
         pictures_and_stamps = {picture_path: published_on for picture_path in picture_paths}
-        self._Timestamper().timestamp_all(pictures_and_stamps)
+        self._Timestamper().timestamp_all(pictures_and_stamps, id, url)
     
     class _Timestamper():
         """Проставляет метку времени на изображениях
@@ -164,7 +165,7 @@ class Scraper(abc.ABC):
             else:
                 return cls.instance
         
-        def timestamp(self, picture_path: str, timestamp: str):
+        def timestamp(self, picture_path: str, timestamp: str, url: str):
             """Ставит метку времени на одном скриншоте
 
             Args:
@@ -175,9 +176,10 @@ class Scraper(abc.ABC):
             img = Image.open(picture_path)
             I1 = ImageDraw.Draw(img)
             I1.text((10, 10), timestamp, font=self.FONT, fill=(255, 0, 0))
+            I1.text((10, 50), url, font=self.FONT, fill=(255, 0, 0))
             img.save(picture_path)
             
-        def timestamp_all(self, pictures_and_timesmps: dict[str, str]):
+        def timestamp_all(self, pictures_and_timesmps: dict[str, str], id: int, url: str):
             """Ставить метки времени на нескольких скриншотах
 
             Args:
@@ -185,7 +187,7 @@ class Scraper(abc.ABC):
             """
             
             for item in pictures_and_timesmps.items():
-                self.timestamp(item[0], item[1])
+                self.timestamp(item[0], item[1], url)
     
     class DateConverter():
         """Конвертер для строкового представления данных
