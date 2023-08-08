@@ -36,6 +36,8 @@ class driver_builder:
         # disable extensions
         options.add_argument('--disable-extensions')
 
+        options.add_argument('--log-level=3')
+
         # disable sandbox mode
         options.add_argument('--no-sandbox')
 
