@@ -32,7 +32,7 @@ class settings():
     AVITO_ITEM_FOOTER = ".//div[@class='style-item-footer-Ufxh_']"
     AVITO_FOOTER_ID_XPATH = ".//span[@data-marker='item-view/item-id']"
     AVITO_FOOTER_PUBLISHED_ON_XPATH = ".//span[@data-marker='item-view/item-date']"
-    AVITO_TITLE_XPATH = ".//span[@data-marker='item-view/title-info']"
+    AVITO_TITLE_XPATH = ".//h1[@data-marker='item-view/title-info']"
     AVITO_PRICE_XPATH = ".//span[@data-marker='item-view/item-price']"
     AVITO_SUBPRICE_XPATH = ".//div[@class='style-item-price-sub-price-_5RUD']/p/span"
     AVITO_SELLER_XPATH = ".//div[@data-marker='seller-info/name']//span"
